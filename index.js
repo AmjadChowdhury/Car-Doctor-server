@@ -9,7 +9,7 @@ const port = process.env.PORT || 5000
 
 //middleware
 app.use(cors({
-  origin: ['https://car-doctors-d7fe2.web.app'],
+  origin: ['https://car-doctors-d7fe2.web.app','http://localhost:5173'],
   credentials: true
 }))
 app.use(express.json())
@@ -27,6 +27,28 @@ const client = new MongoClient(uri, {
   }
 });
 
+//middleware...
+const logger = async(req,res,next) => {
+  console.log('Called',req.host,req.originalUrl)
+  next()
+}
+const verifyToken = async(req,res,next)=>{
+  const token = req.cookies?.token
+  // console.log("In verify",token)
+  if(!token){
+    return res.status(401).send({message: 'Unauthorized'})
+  }
+  jwt.verify(token,process.env.ACCESS_TOKEN,(err,decoded)=>{
+    if(err){
+      // console.log(err)
+      return res.status(401).send({message: 'Unauthorized'})
+    }
+    // console.log("value in the token",decoded)
+    req.user = decoded
+    next()
+  })
+}
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -36,9 +58,9 @@ async function run() {
     const bookingsCollection = client.db('serviceDB').collection('bookings')
 
     // auth related..
-    app.post('/jwt',async(req,res)=>{
+    app.post('/jwt',logger,async(req,res)=>{
       const user = req.body
-      console.log(user)
+      // console.log(user)
       const token = jwt.sign(user,process.env.ACCESS_TOKEN, {expiresIn: '1h'})
       res
       .cookie('token',token,{
@@ -63,9 +85,13 @@ async function run() {
         res.send(result)
     })
 
-    app.get("/bookings",async(req,res)=>{
+    app.get("/bookings",logger,verifyToken,async(req,res)=>{
       console.log(req.query.email)
-      console.log('tok tok token',req.cookies.token)
+      // console.log('tok tok token',req.cookies.token,req.user)
+      if(req.query.email !== req.user.email){
+        res.status(403).send({message: 'forbidden access'})
+      }
+      
       let query = {}
       if(req.query?.email){
         query = {email: req.query.email}
