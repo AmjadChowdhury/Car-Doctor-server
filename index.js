@@ -141,9 +141,19 @@ async function run() {
       res.send(result)
     })
     app.get('/servicesReview',async(req,res)=>{
+      const page = parseInt(req.query.page)
+      const size = parseInt(req.query.size)
+      console.log(page,size)
       const cursor = servicesReviewCollection.find()
-      const result = await cursor.toArray()
+      const result = await cursor
+      .skip(page*size)
+      .limit(size)
+      .toArray()
       res.send(result)
+    })
+    app.get('/servicesReviewCount',async(req,res)=>{
+      const count = await servicesReviewCollection.estimatedDocumentCount()
+      res.send({count})
     })
 
 
