@@ -66,6 +66,7 @@ async function run() {
 
     const servicesCollection = client.db('serviceDB').collection('services')
     const bookingsCollection = client.db('serviceDB').collection('bookings')
+    const servicesReviewCollection = client.db('serviceDB').collection('servicesReview')
 
     // auth related..
     app.post('/jwt',logger,async(req,res)=>{
@@ -86,9 +87,19 @@ async function run() {
 
     // service related...
     app.get('/services',logger,async(req,res)=>{
+        const page = parseInt(req.query.page)
+        const size = parseInt(req.query.size)
+        console.log(page,size)
         const cursor = servicesCollection.find()
-        const result = await cursor.toArray()
+        const result = await cursor
+        .skip(page*size)
+        .limit(size)
+        .toArray()
         res.send(result)
+    })
+    app.get('/servicesCount',async(req,res) => {
+      const count = await servicesCollection.estimatedDocumentCount()
+      res.send({count})
     })
     app.get('/services/:id',async(req,res)=>{
         const id = req.params.id
@@ -122,6 +133,17 @@ async function run() {
       const query = {_id: new ObjectId(id)}
       const result = await bookingsCollection.deleteOne(query)
       res.send(query)
+    })
+
+    app.post('/servicesReview',async(req,res)=>{
+      const servicesReview = req.body
+      const result = await servicesReviewCollection.insertOne(servicesReview)
+      res.send(result)
+    })
+    app.get('/servicesReview',async(req,res)=>{
+      const cursor = servicesReviewCollection.find()
+      const result = await cursor.toArray()
+      res.send(result)
     })
 
 
